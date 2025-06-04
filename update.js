@@ -22,6 +22,16 @@ function calculateService(hireDateStr) {
   return { years, months };
 }
 
+// 年齢計算関数
+function calculateAge(birthdateStr) {
+  const [year, month, day] = birthdateStr.split('-').map(Number);
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const birthdayThisYear = new Date(today.getFullYear(), month - 1, day);
+  if (today < birthdayThisYear) age--;
+  return age;
+}
+
 // 在職レコード取得
 async function fetchRecords() {
   const records = [];
@@ -59,14 +69,19 @@ async function bulkUpdate(records) {
     const updates = chunk.map(record => {
       const id = record.$id.value;
       const hireDate = record['採用日'].value;
-      if (!hireDate) return null;
+      const birthDate = record['生年月日'].value;
+
+      if (!hireDate || !birthDate) return null;
 
       const { years, months } = calculateService(hireDate);
+      const age = calculateAge(birthDate);
+
       return {
         id,
         record: {
           '勤続年数_年': { value: years },
-          '勤続月数': { value: months }
+          '勤続月数': { value: months },
+          '年齢': { value: age }
         }
       };
     }).filter(r => r !== null);
@@ -93,7 +108,7 @@ async function bulkUpdate(records) {
 
 // メイン処理
 (async () => {
-  console.log('🔁 在職者の勤続年数を更新中...');
+  console.log('🔁 在職者の勤続年数と年齢を更新中...');
   const records = await fetchRecords();
   await bulkUpdate(records);
   console.log('🎉 全レコード更新完了');
