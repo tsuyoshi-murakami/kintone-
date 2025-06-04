@@ -61,6 +61,19 @@ async function fetchRecords() {
   return records;
 }
 
+// 職種変更後勤続年数を計算する関数
+function calculateRoleChangeService(changeDateStr) {
+  const changeDate = dayjs(changeDateStr);
+  const today = dayjs();
+
+  let years = today.year() - changeDate.year();
+  let months = today.month() - changeDate.month();
+  if (today.date() < changeDate.date()) months--;
+  if (months < 0) { years--; months += 12; }
+
+  return { years, months };
+}
+
 // レコードをまとめて更新（100件ずつ）
 async function bulkUpdate(records) {
   const limit = 100;
@@ -76,7 +89,7 @@ async function bulkUpdate(records) {
       const { years, months } = calculateService(hireDate);
       const age = calculateAge(birthDate);
 
-      return {
+      const updates = {
         id,
         record: {
           '勤続年数_年': { value: years },
@@ -84,6 +97,14 @@ async function bulkUpdate(records) {
           '年齢': { value: age }
         }
       };
+
+      if (record['職種変更日']?.value) {
+        const { years: chYears, months: chMonths } = calculateRoleChangeService(record['職種変更日'].value);
+        updates.record['職種変更後勤続年数_年'] = { value: chYears };
+        updates.record['職種変更後勤続月数'] = { value: chMonths };
+      }
+
+      return updates;
     }).filter(r => r !== null);
 
     if (updates.length > 0) {
